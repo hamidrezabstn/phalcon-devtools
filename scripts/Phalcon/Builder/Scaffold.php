@@ -216,38 +216,44 @@ class Scaffold extends Component
         $this->options->offsetSet('belongsToDefinitions', []);
 
         // Build Controller
-        $this->makeController();
+        if($this->options->get('api')){
+            $this->makeApiController();
+        }else{
+            $this->makeController();
+        }
 
-        if ($this->options->get('templateEngine') == 'volt') {
-            // View layouts
-            $this->makeLayoutsVolt();
+        if(!$this->options->get('api')) {
+            if ($this->options->get('templateEngine') == 'volt') {
+                // View layouts
+                $this->makeLayoutsVolt();
 
-            // View index.phtml
-            $this->makeViewVolt('index');
+                // View index.phtml
+                $this->makeViewVolt('index');
 
-            // View search.phtml
-            $this->makeViewSearchVolt();
+                // View search.phtml
+                $this->makeViewSearchVolt();
 
-            // View new.phtml
-            $this->makeViewVolt('new');
+                // View new.phtml
+                $this->makeViewVolt('new');
 
-            // View edit.phtml
-            $this->makeViewVolt('edit');
-        } else {
-            // View layouts
-            $this->makeLayouts();
+                // View edit.phtml
+                $this->makeViewVolt('edit');
+            } else {
+                // View layouts
+                $this->makeLayouts();
 
-            // View index.phtml
-            $this->makeView('index');
+                // View index.phtml
+                $this->makeView('index');
 
-            // View search.phtml
-            $this->makeViewSearch();
+                // View search.phtml
+                $this->makeViewSearch();
 
-            // View new.phtml
-            $this->makeView('new');
+                // View new.phtml
+                $this->makeView('new');
 
-            // View edit.phtml
-            $this->makeView('edit');
+                // View edit.phtml
+                $this->makeView('edit');
+            }
         }
 
         print Color::success('Scaffold was successfully created.');
@@ -495,6 +501,102 @@ class Scaffold extends Component
         }
 
         $code = file_get_contents($this->options->get('templatePath') . '/scaffold/no-forms/Controller.php');
+        $usesNamespaces = false;
+
+        if ($this->options->contains('controllersNamespace') &&
+            $this->checkNamespace($this->options->get('controllersNamespace'))) {
+            $code = str_replace(
+                '$namespace$',
+                'namespace ' . $this->options->get('controllersNamespace').';' . PHP_EOL,
+                $code
+            );
+            $usesNamespaces = true;
+        } else {
+            $code = str_replace('$namespace$', ' ', $code);
+        }
+
+        if (($this->options->contains('modelsNamespace') &&
+                $this->checkNamespace($this->options->get('modelsNamespace'))) || $usesNamespaces) {
+            $code = str_replace(
+                '$useFullyQualifiedModelName$',
+                "use " . ltrim($this->options->get('modelClass'), '\\') . ';',
+                $code
+            );
+        } else {
+            $code = str_replace('$useFullyQualifiedModelName$', '', $code);
+        }
+
+        $code = str_replace('$fullyQualifiedModelName$', $this->options->get('modelClass'), $code);
+
+        $code = str_replace(
+            '$singularVar$',
+            '$' . Utils::lowerCamelizeWithDelimiter($this->options->get('singular'), '-', true),
+            $code
+        );
+        $code = str_replace('$singular$', $this->options->get('singular'), $code);
+
+        $code = str_replace(
+            '$pluralVar$',
+            '$' . Utils::lowerCamelizeWithDelimiter($this->options->get('plural'), '-', true),
+            $code
+        );
+        $code = str_replace('$plural$', $this->options->get('plural'), $code);
+
+        $code = str_replace('$className$', $this->options->get('className'), $code);
+
+        $code = str_replace('$assignInputFromRequestCreate$', $this->captureFilterInput(
+            $this->options->get('singular'),
+            $this->options->get('dataTypes'),
+            $this->options->get('genSettersGetters'),
+            $this->options->get('identityField')
+        ), $code);
+
+        $code = str_replace('$assignInputFromRequestUpdate$', $this->captureFilterInput(
+            $this->options->get('singular'),
+            $this->options->get('dataTypes'),
+            $this->options->get('genSettersGetters'),
+            $this->options->get('identityField')
+        ), $code);
+
+        $code = str_replace('$assignTagDefaults$', $this->assignTagDefaults(
+            $this->options->get('singular'),
+            $this->options->get('dataTypes'),
+            $this->options->get('genSettersGetters')
+        ), $code);
+
+        $attributes = $this->options->get('attributes');
+
+        $code = str_replace('$pkVar$', '$' . $attributes[0], $code);
+
+        if ($this->options->get('genSettersGetters')) {
+            $code = str_replace('$pkGet$', 'get' . Text::camelize($attributes[0]) . '()', $code);
+        } else {
+            $code = str_replace('$pkGet$', $attributes[0], $code);
+        }
+        $code = str_replace('$pk$', $attributes[0], $code);
+
+        if ($this->isConsole()) {
+            echo $controllerPath, PHP_EOL;
+        }
+
+        $code = str_replace("\t", "    ", $code);
+        file_put_contents($controllerPath, $code);
+    }
+
+    /**
+     * Generate controller using scaffold
+     */
+    private function makeApiController()
+    {
+        $controllerPath = $this->options->get('controllersDir') . $this->options->get('className') . 'Controller.php';
+
+        if (file_exists($controllerPath)) {
+            if (!$this->options->contains('force')) {
+                return;
+            }
+        }
+
+        $code = file_get_contents($this->options->get('templatePath') . '/scaffold-api/no-forms/Controller.php');
         $usesNamespaces = false;
 
         if ($this->options->contains('controllersNamespace') &&
