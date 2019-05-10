@@ -43,6 +43,7 @@ class Scaffold extends Command
     {
         return [
             'table-name=s'      => 'Table used as base to generate the scaffold',
+            'api'               => 'Generates code as api ready and without view',
             'schema=s'          => 'Name of the schema [optional]',
             'config=s'          => 'Configuration file [optional]',
             'get-set'           => 'Attributes will be protected and have setters/getters. [optional]',
@@ -71,9 +72,10 @@ class Scaffold extends Command
         $templateEngine = $this->getOption(['template-engine'], null, "phtml");
         $path = $this->getDirectoryPath();
 
-        $scaffoldBuilder = new ScaffoldBuilder([
+        $options = [
             'name'                 => $name,
             'schema'               => $schema,
+            'api'                  => $this->isReceivedOption('api'),
             'force'                => $this->isReceivedOption('force'),
             'genSettersGetters'    => $this->isReceivedOption('get-set'),
             'directory'            => $path,
@@ -82,7 +84,9 @@ class Scaffold extends Command
             'modelsNamespace'      => $this->getOption('ns-models'),
             'controllersNamespace' => $this->getOption('ns-controllers'),
             'config'               => $this->getreceivedOrDefaultConfig($path),
-        ]);
+        ];
+
+        $scaffoldBuilder = new ScaffoldBuilder($options) ;
 
         return $scaffoldBuilder->build();
     }
