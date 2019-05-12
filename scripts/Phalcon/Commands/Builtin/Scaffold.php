@@ -43,7 +43,8 @@ class Scaffold extends Command
     {
         return [
             'table-name=s'      => 'Table used as base to generate the scaffold',
-            'api'               => 'Generates code as api ready and without view',
+            'api'               => 'Generates code which is api ready and without view',
+            'raw'               => 'Parse post requests as raw body(useful for json body)',
             'schema=s'          => 'Name of the schema [optional]',
             'config=s'          => 'Configuration file [optional]',
             'get-set'           => 'Attributes will be protected and have setters/getters. [optional]',
@@ -76,6 +77,7 @@ class Scaffold extends Command
             'name'                 => $name,
             'schema'               => $schema,
             'api'                  => $this->isReceivedOption('api'),
+            'raw'                  => $this->isReceivedOption('raw'),
             'force'                => $this->isReceivedOption('force'),
             'genSettersGetters'    => $this->isReceivedOption('get-set'),
             'directory'            => $path,
