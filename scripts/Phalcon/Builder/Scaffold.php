@@ -134,16 +134,16 @@ class Scaffold extends Component
             $controllerPath = $this->path->getRootPath($config->path('application.controllersDir'));
         }
         $this->options->offsetSet('controllersDir', rtrim($controllerPath, '\\/') . DIRECTORY_SEPARATOR);
-
-        if (empty($config->path('application.viewsDir'))) {
-            throw new BuilderException('The builder is unable to find the views directory.');
+        if(!$this->options->get('api')) {
+            if (empty($config->path('application.viewsDir'))) {
+                throw new BuilderException('The builder is unable to find the views directory.');
+            }
+            $viewPath = $config->path('application.viewsDir');
+            if (false == $this->isAbsolutePath($viewPath)) {
+                $viewPath = $this->path->getRootPath($config->path('application.viewsDir'));
+            }
+            $this->options->offsetSet('viewsDir', $viewPath);
         }
-        $viewPath = $config->path('application.viewsDir');
-        if (false == $this->isAbsolutePath($viewPath)) {
-            $viewPath = $this->path->getRootPath($config->path('application.viewsDir'));
-        }
-        $this->options->offsetSet('viewsDir', $viewPath);
-
 
         $this->options->offsetSet('manager', $di->getShared('modelsManager'));
         $this->options->offsetSet('className', Text::camelize($this->options->get('name')));
@@ -269,21 +269,28 @@ class Scaffold extends Component
      *
      * @return string
      */
-    private function captureFilterInput($var, $fields, $useGetSetters, $identityField)
+    private function captureFilterInput($var, $fields, $useGetSetters, $identityField,$isRawBody=false)
     {
         $code = '';
+        if($isRawBody) {
+            $code .= '$rawBody = json_decode($this->request->getRawBody(),true);'. PHP_EOL . "\t\t";
+            $code .= '//TODO Validate $rawBody using your validator'. PHP_EOL . "\t\t";
+        }
         foreach ($fields as $field => $dataType) {
             if ($field == $identityField) {
                 continue;
             }
-
-            if (strpos($dataType, 'int') !== false) {
-                $fieldCode = '$this->request->getPost("'.$field.'", "int")';
-            } else {
-                if ($field == 'email') {
-                    $fieldCode = '$this->request->getPost("'.$field.'", "email")';
+            if($isRawBody){
+                $fieldCode = '$rawBody["'.$field.'"]';
+            }else {
+                if (strpos($dataType, 'int') !== false) {
+                    $fieldCode = '$this->request->getPost("' . $field . '", "int")';
                 } else {
-                    $fieldCode = '$this->request->getPost("'.$field.'")';
+                    if ($field == 'email') {
+                        $fieldCode = '$this->request->getPost("' . $field . '", "email")';
+                    } else {
+                        $fieldCode = '$this->request->getPost("' . $field . '")';
+                    }
                 }
             }
 
@@ -644,14 +651,16 @@ class Scaffold extends Component
             $this->options->get('singular'),
             $this->options->get('dataTypes'),
             $this->options->get('genSettersGetters'),
-            $this->options->get('identityField')
+            $this->options->get('identityField'),
+            $this->options->get('raw',false)
         ), $code);
 
         $code = str_replace('$assignInputFromRequestUpdate$', $this->captureFilterInput(
             $this->options->get('singular'),
             $this->options->get('dataTypes'),
             $this->options->get('genSettersGetters'),
-            $this->options->get('identityField')
+            $this->options->get('identityField'),
+            $this->options->get('raw',false)
         ), $code);
 
         $code = str_replace('$assignTagDefaults$', $this->assignTagDefaults(
